@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 from datetime import datetime
 import os
-import sounddevice as sd
+from streamlit_audio_recorder import st_audio_recorder
 from scipy.io.wavfile import write
 import tempfile
 from openai import OpenAI
@@ -88,19 +88,19 @@ client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 # --- Helper Function: Record and Transcribe ---
 def record_and_transcribe():
-    DURATION = 10  # seconds of recording
-    SAMPLE_RATE = 16000
+    st.info("🎙️ Click the mic button to start and stop recording.")
 
-    st.info("🎙️ Recording... Please speak now!")
-    recording = sd.rec(int(DURATION * SAMPLE_RATE), samplerate=SAMPLE_RATE, channels=1, dtype="int16")
-    sd.wait()
-    st.success("✅ Recording finished!")
+    # --- Browser microphone recording ---
+    audio_bytes = st_audio_recorder(pause_threshold=60.0)  # up to 60 seconds
+    if not audio_bytes:
+        return None
 
+    # --- Save audio to a temporary file ---
     with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as tmpfile:
-        write(tmpfile.name, SAMPLE_RATE, recording)
+        tmpfile.write(audio_bytes)
         audio_path = tmpfile.name
 
-    # --- Transcribe ---
+    # --- Transcribe with Whisper ---
     with open(audio_path, "rb") as audio_file:
         translation = client.audio.translations.create(
             model="whisper-1",
@@ -120,7 +120,6 @@ def record_and_transcribe():
 
     refined_text = response.choices[0].message.content
     return refined_text
-
 
 # --- LOGIN PAGE ---
 def login_page():
