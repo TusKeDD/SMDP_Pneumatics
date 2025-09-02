@@ -88,19 +88,19 @@ client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 # --- Helper Function: Record and Transcribe ---
 def record_and_transcribe():
-    st.info("🎙️ Click the mic button to start and stop recording.")
+    DURATION = 10  # seconds of recording
+    SAMPLE_RATE = 16000
 
-    # --- Browser microphone recording ---
-    audio_bytes = st_audio_recorder(pause_threshold=60.0)  # up to 60 seconds
-    if not audio_bytes:
-        return None
+    st.info("🎙️ Recording... Please speak now!")
+    recording = sd.rec(int(DURATION * SAMPLE_RATE), samplerate=SAMPLE_RATE, channels=1, dtype="int16")
+    sd.wait()
+    st.success("✅ Recording finished!")
 
-    # --- Save audio to a temporary file ---
     with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as tmpfile:
-        tmpfile.write(audio_bytes)
+        write(tmpfile.name, SAMPLE_RATE, recording)
         audio_path = tmpfile.name
 
-    # --- Transcribe with Whisper ---
+    # --- Transcribe ---
     with open(audio_path, "rb") as audio_file:
         translation = client.audio.translations.create(
             model="whisper-1",
